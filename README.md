@@ -1,6 +1,6 @@
 # mcp-kcli
 
-A [FastMCP](https://github.com/sshaidm/fastmcp) server that acts as a wrapper around the `kcli` tool to manage virtual machines.
+A [FastMCP](https://github.com/jlowin/fastmcp) server that acts as a wrapper around the `kcli` tool to manage virtual machines.
 
 ## Description
 
@@ -14,26 +14,31 @@ This server exposes `kcli` functionalities through a simple API, allowing remote
 
 ## Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/mcp-kcli.git
-    cd mcp-kcli
-    ```
+1. **Clone the repository:**
 
-2.  **Create a `requirements.txt` file** with the following content:
-    ```
+   ```bash
+   git clone https://github.com/sshnaidm/mcp-kcli.git
+   cd mcp-kcli
+   ```
+
+2. **Create a `requirements.txt` file** with the following content:
+
+    ```text
     fastmcp
     pydantic
-    uvicorn[standard]
+    kcli
     ```
 
-3.  **Install the dependencies:**
+3. **Install the dependencies:**
+
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Configure `kcli` path (if needed):**
-    The server expects the `kcli` binary to be in your system's `PATH`. If it's located elsewhere, you can specify its path using the `KCLI_BIN` environment variable:
+4. **Configure `kcli` path (if needed):**
+    The server expects the `kcli` binary to be in your system's `PATH`. If it's located elsewhere,
+    you can specify its path using the `KCLI_BIN` environment variable:
+
     ```bash
     export KCLI_BIN=/path/to/your/kcli
     ```
@@ -45,10 +50,54 @@ This server exposes `kcli` functionalities through a simple API, allowing remote
 You can run the server using `fastmcp`:
 
 ```bash
-fastmcp run --port 5005 mcp.py
+fastmcp run --port 5005 --transport streamable-http mcp.py
 ```
 
 You should see output indicating the server is running, typically on `http://127.0.0.1:5005`.
+
+### Configuration in MCP clients and AI Agents
+
+#### Gemini CLI
+
+Configure in your `~/.gemini/settings.json` file:
+
+##### For STDIO
+
+```json
+{
+  "mcpServers": {
+    "kcli_mcp": {
+        "command": "/path/to/your/fastmcp",
+        "args": ["run", "-t", "stdio", "mcp.py"],
+        "cwd": "/path/to/your/repo/mcp-kcli",
+        },
+    }
+}
+```
+
+##### For HTTP transport
+
+```json
+{
+  "mcpServers": {
+    "kcli_mcp": {
+        "httpUrl": "http://127.0.0.1:5005/mcp",
+        },
+    }
+}
+```
+
+#### Configure in your Cursor AI
+
+```json
+{
+  "mcpServers": {
+    "kcli_mcp": {
+      "url": "http://localhost:5005/mcp"
+    }
+  }
+}
+```
 
 ### Interacting with the API
 
@@ -69,20 +118,24 @@ The request body should be a JSON object specifying the tool to run and its para
 }
 ```
 
--   `tool`: The name of the tool to execute (`list_vms`).
--   `params.host`: The hostname or IP address of the hypervisor where `kcli` will list the VMs.
+- `tool`: The name of the tool to execute (`list_vms`).
+- `params.host`: The hostname or IP address of the hypervisor where `kcli` will list the VMs.
 
 #### Example using `curl`
 
 ```bash
-curl -X POST http://127.0.0.1:5005/mcp \
+curl -L -X POST http://127.0.0.1:5005/mcp \
 -H "Content-Type: application/json" \
+-H "Accept: application/json, text/event-stream" \
+-H "mcp-session-id: test" \
 -d '{
-  "tool": "list_vms",
-  "params": {
-    "host": "kvm-host.example.com"
-  }
+    "jsonrpc": "2.0",
+    "method": "list_vms",
+    "params": {
+        "host": "your-hypervisor-host"
+    }
 }'
 ```
 
-A successful request will return a JSON array with VM details. If an error occurs (e.g., the host is unreachable), it will return a JSON object with an error message.
+A successful request will return a JSON array with VM details. If an error occurs (e.g., the host is unreachable),
+it will return a JSON object with an error message.
