@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2024 Sagi Shnaidman, Red Hat.
+
 import os
 import subprocess
 from typing import Any
