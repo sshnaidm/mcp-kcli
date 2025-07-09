@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) 2024 Sagi Shnaidman, Red Hat.
 
+import json
 import os
 import subprocess
-from typing import Any
+from typing import Any, Dict, Union
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -15,7 +16,7 @@ if not os.path.isfile(KCLI_BIN):
     )
 
 # Initialize FastMCP server
-mcp = FastMCP(name="kcli", description="KCLI is a tool to work with virtual machines on different hosts.")
+mcp = FastMCP(name="kcli", stateless_http=True)
 
 
 class KCLIRequest(BaseModel):
@@ -88,13 +89,19 @@ def list_vms(host: str) -> dict[str, Any]:
         Example output: [{"name": .... }]
         """,
 )
-async def get_virtual_machines(params: KCLIRequest) -> dict[str, Any]:
+async def get_virtual_machines(params: Union[Dict, str]) -> str:
     """
     Asynchronously gets list of virtual machines on server with their info
     :param params: KCLIRequest containing the host information
     :return: List of virtual machines with their details or error message
     """
-    return list_vms(params.host)
+    # Work around dumb CursorAI issue where params is a string
+    if isinstance(params, str):
+        params = json.loads(params)
+    host = params.get("host")
+    if not host:
+        return {"status": "error", "message": "Host parameter is required."}
+    return list_vms(host)
 
 
 # --- Server Execution ---
